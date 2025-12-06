@@ -22,9 +22,30 @@ int main() {
 
     int hargaList[] = {35000,10000,30000,15000,70000,50000,10000,85000};
 
+    // ===================== NOMOR TRANSAKSI (dari file) ======================
+    FILE *f;
+    int nomor_transaksi = 0; // default 0, nanti jadi 1 jika file belum ada
+
+    f = fopen("counter.txt", "r");
+    if (f != NULL) {
+        if (fscanf(f, "%d", &nomor_transaksi) != 1) {
+            nomor_transaksi = 0; // jika file kosong/invalid
+        }
+        fclose(f);
+    }
+    nomor_transaksi++; // transaksi baru: increment
+
+    f = fopen("counter.txt", "w");
+    if (f != NULL) {
+        fprintf(f, "%d", nomor_transaksi);
+        fclose(f);
+    } else {
+        printf("⚠️  Peringatan: tidak bisa menulis counter.txt. Nomor transaksi mungkin tidak berlanjut.\n");
+    }
+
     // ===================== HEADER ==========================
     printf("\t\t\t\t===============================================\n");
-    printf("\t\t\t\t||         NAMA KELOMPOK KING BAHLIL         ||\n");
+    printf("\t\t\t\t||         NAMA KELOMPOK KING KOPLO          ||\n");
     printf("\t\t\t\t|| -MUHAMMAD NUR ADZIM           -411251100  ||\n");
     printf("\t\t\t\t|| -IHSAN IBNU ABDURRAUF         -411251110  ||\n");
     printf("\t\t\t\t|| -DICKY FACHRIE RHAMADHAN      -411251097  ||\n");
@@ -56,7 +77,10 @@ int main() {
     // ===================== PEMBELIAN ==========================
     while (kar == 'y') {
         printf("Masukkan No Barang yang dibeli : ");
-        scanf("%d", &kode);
+        if (scanf("%d", &kode) != 1) {
+            printf("Input tidak valid. Harus angka.\n");
+            return 0;
+        }
 
         int index = kode - 1;
 
@@ -71,10 +95,18 @@ int main() {
         printf("Harga %s = Rp. %d\n", nama_barang[jumlah_beli], harga);
 
         printf("Jumlah yang dibeli : ");
-        scanf("%d", &qty);
+        if (scanf("%d", &qty) != 1) {
+            printf("Input tidak valid. Harus angka.\n");
+            return 0;
+        }
+
+        if (qty <= 0) {
+            printf("Jumlah tidak boleh nol atau negatif.\n\n");
+            continue;
+        }
 
         if (qty > stok[index]) {
-            printf("Stok %s tinggal %d saja!\n\n", nama_barang[jumlah_beli], stok[index]);
+            printf("⚠️  Stok %s tinggal %d saja!\n\n", nama_barang[jumlah_beli], stok[index]);
             continue;
         }
 
@@ -102,13 +134,13 @@ int main() {
 
     // diskon bertingkat
     if (total_pembelian > 500000) {
-        diskon = 0.2 * total_pembelian;
+        diskon = (int)(0.20 * total_pembelian);
     } else if (total_pembelian > 300000) {
-        diskon = 0.15 * total_pembelian;
+        diskon = (int)(0.15 * total_pembelian);
     } else if (total_pembelian > 200000) {
-        diskon = 0.1 * total_pembelian;
+        diskon = (int)(0.10 * total_pembelian);
     } else if (total_pembelian > 100000) {
-        diskon = 0.05 * total_pembelian;
+        diskon = (int)(0.05 * total_pembelian);
     } else {
         diskon = 0;
     }
@@ -123,31 +155,31 @@ int main() {
     // loop sampai bayar cukup
     do {
         printf("%-22s = Rp. ", "Masukkan uang bayar");
-        scanf("%d", &bayar);
+        if (scanf("%d", &bayar) != 1) {
+            printf("Input tidak valid. Harus angka.\n");
+            return 0;
+        }
 
         if (bayar < total_bayar) {
-            printf("Uang kurang Rp. %d, silakan tambah lagi!\n\n", total_bayar - bayar);
+            printf("⚠️  Uang kurang Rp. %d, silakan tambah lagi!\n\n", total_bayar - bayar);
         }
     } while (bayar < total_bayar);
 
     kembalian = bayar - total_bayar;
     printf("%-22s = Rp. %-10d\n", "UANG KEMBALIAN", kembalian);
 
-    // ===================== STRUK BELANJA ==========================
-    // ambil waktu sekarang
+    // ===================== STRUK BELANJA (waktu) ==========================
     time_t t;
     struct tm *tm_info;
-    char buffer[30];
+    char buffer_waktu[30];
     time(&t);
     tm_info = localtime(&t);
-    strftime(buffer, 30, "%d-%m-%Y %H:%M:%S", tm_info);
+    strftime(buffer_waktu, 30, "%d-%m-%Y %H:%M:%S", tm_info);
 
-    // nomor transaksi (simulasi, bisa dibuat auto increment dari file)
-    static int nomor_transaksi = 1;
-
+    // ===================== CETAK STRUK KE LAYAR ==========================
     printf("\n=================== STRUK BELANJA ===================\n");
     printf("Nomor Transaksi : INV-%04d\n", nomor_transaksi);
-    printf("Tanggal/Waktu   : %s\n", buffer);
+    printf("Tanggal/Waktu   : %s\n", buffer_waktu);
     printf("No   Nama Barang           Qty     Subtotal\n");
     printf("-----------------------------------------------------\n");
 
@@ -172,6 +204,45 @@ int main() {
     printf("          TERIMA KASIH SUDAH BERBELANJA DITOKO KAMI !\n");
     printf("=================================================================\n");
 
+    // ===================== SIMPAN STRUK KE FILE ==========================
+    char filename[64];
+    sprintf(filename, "struk_INV%04d.txt", nomor_transaksi);
+
+    FILE *strukFile = fopen(filename, "w");
+    if (strukFile != NULL) {
+        fprintf(strukFile, "=================== STRUK BELANJA ===================\n");
+        fprintf(strukFile, "Nomor Transaksi : INV-%04d\n", nomor_transaksi);
+        fprintf(strukFile, "Tanggal/Waktu   : %s\n", buffer_waktu);
+        fprintf(strukFile, "No   Nama Barang           Qty     Subtotal\n");
+        fprintf(strukFile, "-----------------------------------------------------\n");
+
+        for (int a = 0; a < jumlah_beli; a++) {
+            fprintf(strukFile, "%-5d %-20s %-7d Rp. %d\n",
+                a + 1,
+                nama_barang[a],
+                jumlah_barang[a],
+                subtotal_barang[a]);
+        }
+
+        fprintf(strukFile, "-----------------------------------------------------\n");
+        fprintf(strukFile, "%-20s = Rp. %d\n", "TOTAL PEMBELIAN", total_pembelian);
+        if (diskon > 0)
+            fprintf(strukFile, "%-20s = Rp. %d\n", "DISKON", diskon);
+
+        fprintf(strukFile, "%-20s = Rp. %d\n", "TOTAL BAYAR", total_bayar);
+        fprintf(strukFile, "%-20s = Rp. %d\n", "UANG BAYAR", bayar);
+        fprintf(strukFile, "%-20s = Rp. %d\n", "KEMBALIAN", kembalian);
+
+        fprintf(strukFile, "=================================================================\n");
+        fprintf(strukFile, "          TERIMA KASIH SUDAH BERBELANJA DITOKO KAMI !\n");
+        fprintf(strukFile, "=================================================================\n");
+
+        fclose(strukFile);
+        printf("Struk berhasil disimpan ke file: %s\n", filename);
+    } else {
+        printf("⚠️  Gagal menyimpan struk ke file!\n");
+    }
+
     // ===================== SISA STOK ==========================
     printf("\n=================== SISA STOK BARANG ===================\n");
     printf("Kode  Nama Barang         Sisa Stok\n");
@@ -183,6 +254,7 @@ int main() {
 
     printf("--------------------------------------------------------\n\n");
 
-    system("pause");
+    // catatan: untuk portabilitas, hindari system("pause")
+    // system("pause");
     return 0;
 }
