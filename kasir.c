@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>   // untuk tanggal & waktu
 
 int main() {
 
@@ -77,7 +78,7 @@ while (kar == 'y') {
     scanf("%d", &qty);
 
     if (qty > stok[index]) {
-        printf("⚠️  Stok %s tinggal %d saja!\n\n", nama_barang[jumlah_beli], stok[index]);
+        printf("Stok %s tinggal %d saja!\n\n", nama_barang[jumlah_beli], stok[index]);
         continue;
     }
 
@@ -116,12 +117,15 @@ printf("%-22s = Rp. %-10d\n", "TOTAL BAYAR", total_bayar);
 printf("%-22s = Rp. ", "Masukkan uang bayar");
 scanf("%d", &bayar);
 
-kembalian = bayar - total_bayar;
+if (bayar < total_bayar) {
+    printf("%-22s = Rp. -%d\n", "UANG KURANG", total_bayar - bayar);
+    printf("\nTRANSAKSI DIBATALKAN! UANG TIDAK CUKUP.\n");
+    return 0;   // <-- transaksi dihentikan total
+}
 
-if (bayar >= total_bayar)
-    printf("%-22s = Rp. %-10d\n", "UANG KEMBALIAN", kembalian);
-else
-    printf("%-22s = Rp. %-10d\n", "UANG KURANG", total_bayar - bayar);
+kembalian = bayar - total_bayar;
+printf("%-22s = Rp. %-10d\n", "UANG KEMBALIAN", kembalian);
+
 
 // ===================== STRUK BELANJA ==========================
 printf("\n=================== STRUK BELANJA ===================\n");
