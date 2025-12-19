@@ -4,10 +4,9 @@
 #include <time.h>
 
 #define MAX_ITEMS 200
-#define NAME_LEN  128
-#define LINE_LEN  256
+#define NAME_LEN  64
 
-// Format rupiah dengan titik ribuan
+// fungsi format rupiah dengan titik ribuan
 void formatRupiah(int angka, char *buffer) {
     char temp[50];
     sprintf(temp, "%d", angka);
@@ -25,6 +24,7 @@ void formatRupiah(int angka, char *buffer) {
         }
     }
 
+    // balik string
     int n = strlen(buffer);
     for (int i = 0; i < n / 2; i++) {
         char c = buffer[i];
@@ -33,76 +33,33 @@ void formatRupiah(int angka, char *buffer) {
     }
 }
 
-// Trim spasi dan newline di ujung string
-void rtrim(char *s) {
-    int n = strlen(s);
-    while (n > 0 && (s[n-1] == '\n' || s[n-1] == '\r' || s[n-1] == ' ' || s[n-1] == '\t')) {
-        s[n-1] = '\0';
-        n--;
-    }
-}
-
-// Parse satu baris CSV: "nama,harga,stok"
-int parseCSVLine(const char *line, char *nama, int *harga, int *stok) {
-    // Salin line agar aman untuk strtok
-    char buf[LINE_LEN];
-    strncpy(buf, line, LINE_LEN-1);
-    buf[LINE_LEN-1] = '\0';
-
-    char *pNama = strtok(buf, ",");
-    char *pHarga = strtok(NULL, ",");
-    char *pStok  = strtok(NULL, ",");
-
-    if (!pNama || !pHarga || !pStok) return 0;
-
-    rtrim(pNama); rtrim(pHarga); rtrim(pStok);
-
-    strncpy(nama, pNama, NAME_LEN-1);
-    nama[NAME_LEN-1] = '\0';
-    *harga = atoi(pHarga);
-    *stok  = atoi(pStok);
-
-    return 1;
-}
-
 int main() {
-    // Data barang dari file
+    // data barang dinamis dari file
     char namaList[MAX_ITEMS][NAME_LEN];
     int hargaList[MAX_ITEMS];
     int stok[MAX_ITEMS];
     int jumlahItem = 0;
 
-    // ===================== BACA DATA BARANG (CSV) ======================
+    // ===================== BACA DATA BARANG DARI FILE ======================
     FILE *barangFile = fopen("barang.txt", "r");
     if (barangFile != NULL) {
-        char line[LINE_LEN];
-        while (jumlahItem < MAX_ITEMS && fgets(line, sizeof(line), barangFile)) {
-            // Lewati baris kosong
-            if (line[0] == '\n' || line[0] == '\r' || line[0] == '\0') continue;
-
-            char nama[NAME_LEN];
-            int harga, sisa;
-            if (parseCSVLine(line, nama, &harga, &sisa)) {
-                strncpy(namaList[jumlahItem], nama, NAME_LEN-1);
-                namaList[jumlahItem][NAME_LEN-1] = '\0';
-                hargaList[jumlahItem] = harga;
-                stok[jumlahItem] = sisa;
-                jumlahItem++;
-            }
+        while (jumlahItem < MAX_ITEMS &&
+               fscanf(barangFile, "%63s %d %d", namaList[jumlahItem], &hargaList[jumlahItem], &stok[jumlahItem]) == 3) {
+            jumlahItem++;
         }
         fclose(barangFile);
         if (jumlahItem == 0) {
-            printf("Peringatan: barang.txt kosong/format salah. Memuat data default.\n");
+            printf("Peringatan: barang.txt kosong atau format salah. Memuat data default.\n");
         }
     } else {
         printf("Peringatan: barang.txt tidak ditemukan. Memuat data default.\n");
     }
 
-    // Fallback default bila file tidak ada/invalid
+    // fallback default bila file tidak ada/invalid
     if (jumlahItem == 0) {
         const char *defaultNama[] = {
             "KAPASITOR","RESISTOR","INDUKTOR","DIODA",
-            "TRANSISTOR MINI","IC CHIP","SAKLAR LISTRIK","TRANSFORMATOR BESAR"
+            "TRANSISTOR","IC","SAKLAR","TRANSFORMATOR"
         };
         int defaultHarga[] = {35000,10000,30000,15000,70000,50000,10000,85000};
         int defaultStok[]  = {20,50,30,40,25,35,60,15};
@@ -116,7 +73,7 @@ int main() {
         jumlahItem = 8;
     }
 
-    // ===================== NOMOR TRANSAKSI (counter.txt) ======================
+    // ===================== NOMOR TRANSAKSI (dari file) ======================
     FILE *f;
     int nomor_transaksi = 0;
 
@@ -151,15 +108,15 @@ int main() {
     printf("\t\t\t\t===============================================\n");
 
     // ===================== DAFTAR BARANG ======================
-    printf("No   Kode     Nama Barang                     Harga         Stok\n");
-    printf("-------------------------------------------------------------------\n");
+    printf("No   Kode     Nama Barang                Harga         Stok\n");
+    printf("---------------------------------------------------------------\n");
     for (int s = 0; s < jumlahItem; s++) {
         char rup[50];
         formatRupiah(hargaList[s], rup);
-        printf("%-4d %-8.3d %-30s Rp. %-10s %d\n",
+        printf("%-4d %-8.3d %-25s Rp. %-10s %d\n",
                s + 1, s + 1, namaList[s], rup, stok[s]);
     }
-    printf("-------------------------------------------------------------------\n\n");
+    printf("---------------------------------------------------------------\n\n");
 
     // ===================== PEMBELIAN ======================
     int kode, harga, qty;
@@ -205,6 +162,7 @@ int main() {
             continue;
         }
 
+        // kurangi stok
         stok[index] -= qty;
 
         int subtotal = harga * qty;
@@ -225,6 +183,7 @@ int main() {
     formatRupiah(total_pembelian, rupiah);
     printf("%-22s = Rp. %s\n", "TOTAL PEMBELIAN", rupiah);
 
+    // diskon bertingkat
     if (total_pembelian > 500000) diskon = (int)(0.20 * total_pembelian);
     else if (total_pembelian > 300000) diskon = (int)(0.15 * total_pembelian);
     else if (total_pembelian > 200000) diskon = (int)(0.10 * total_pembelian);
@@ -241,11 +200,13 @@ int main() {
     formatRupiah(total_bayar, rupiah);
     printf("%-22s = Rp. %s\n", "TOTAL BAYAR", rupiah);
 
+    // metode pembayaran (validasi loop)
     int metode = 0;
     char metodeStr[20];
     do {
         printf("\nPilih metode pembayaran:\n1. Tunai\n2. QRIS\n3. Debit\nPilihan: ");
         if (scanf("%d", &metode) != 1) {
+            // bersihkan buffer jika perlu
             printf("Input tidak valid. Harus angka 1-3.\n");
             return 0;
         }
@@ -260,6 +221,7 @@ int main() {
         case 3: strcpy(metodeStr, "Debit"); break;
     }
 
+    // loop sampai bayar cukup
     do {
         printf("%-22s = Rp. ", "Masukkan uang bayar");
         if (scanf("%d", &bayar) != 1) {
@@ -277,7 +239,7 @@ int main() {
     formatRupiah(kembalian, rupiah);
     printf("%-22s = Rp. %s\n", "UANG KEMBALIAN", rupiah);
 
-    // ===================== WAKTU STRUK ======================
+    // ===================== STRUK BELANJA (waktu) ======================
     time_t t;
     struct tm *tm_info;
     char buffer_waktu[30];
@@ -291,12 +253,12 @@ int main() {
     printf("Nomor Transaksi   : INV-%04d\n", nomor_transaksi);
     printf("Tanggal/Waktu     : %s\n", buffer_waktu);
     printf("Metode Pembayaran : %s\n", metodeStr);
-    printf("No   Nama Barang                     Qty     Subtotal\n");
+    printf("No   Nama Barang                Qty     Subtotal\n");
     printf("-----------------------------------------------------\n");
 
     for (int a = 0; a < jumlah_beli; a++) {
         formatRupiah(subtotal_barang[a], rupiah);
-        printf("%-5d %-30s %-7d Rp. %s\n",
+        printf("%-5d %-25s %-7d Rp. %s\n",
                a + 1, nama_barang[a], jumlah_barang[a], rupiah);
     }
 
@@ -329,13 +291,13 @@ int main() {
         fprintf(strukFile, "Nomor Transaksi   : INV-%04d\n", nomor_transaksi);
         fprintf(strukFile, "Tanggal/Waktu     : %s\n", buffer_waktu);
         fprintf(strukFile, "Metode Pembayaran : %s\n", metodeStr);
-        fprintf(strukFile, "No   Nama Barang                     Qty     Subtotal\n");
+        fprintf(strukFile, "No   Nama Barang                Qty     Subtotal\n");
         fprintf(strukFile, "-----------------------------------------------------\n");
 
         for (int a = 0; a < jumlah_beli; a++) {
             char rup_sub[50];
             formatRupiah(subtotal_barang[a], rup_sub);
-            fprintf(strukFile, "%-5d %-30s %-7d Rp. %s\n",
+            fprintf(strukFile, "%-5d %-25s %-7d Rp. %s\n",
                     a + 1, nama_barang[a], jumlah_barang[a], rup_sub);
         }
 
@@ -367,11 +329,11 @@ int main() {
         printf("Gagal menyimpan struk ke file!\n");
     }
 
-    // ===================== SIMPAN DATA BARANG TERBARU (CSV) ======================
+    // ===================== SIMPAN DATA BARANG TERBARU KE FILE ======================
     barangFile = fopen("barang.txt", "w");
     if (barangFile != NULL) {
         for (int i = 0; i < jumlahItem; i++) {
-            fprintf(barangFile, "%s,%d,%d\n", namaList[i], hargaList[i], stok[i]);
+            fprintf(barangFile, "%s %d %d\n", namaList[i], hargaList[i], stok[i]);
         }
         fclose(barangFile);
         printf("Data barang terbaru berhasil disimpan ke barang.txt\n");
@@ -381,10 +343,10 @@ int main() {
 
     // ===================== SISA STOK ======================
     printf("\n=================== SISA STOK BARANG ===================\n");
-    printf("Kode  Nama Barang                     Sisa Stok\n");
+    printf("Kode  Nama Barang                Sisa Stok\n");
     printf("--------------------------------------------------------\n");
     for (int s = 0; s < jumlahItem; s++) {
-        printf("%-5d %-30s %d\n", s + 1, namaList[s], stok[s]);
+        printf("%-5d %-25s %d\n", s + 1, namaList[s], stok[s]);
     }
     printf("--------------------------------------------------------\n\n");
 
